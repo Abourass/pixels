@@ -6,7 +6,9 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
+    "dev": "vite",
+    "build:demo": "vite build",
+    "preview": "vite preview",
     "lint": "biome check .",
     "format": "biome format --write .",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -21,6 +23,7 @@
   "license": "ISC",
   "devDependencies": {
     "@biomejs/biome": "2.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vite": "^6.3.5"
   }
 }

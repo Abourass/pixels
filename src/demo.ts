@@ -1,6 +1,6 @@
-import { BUILT_IN_PALETTES, PixelIt } from '../src/pixel-it';
-import type { RGBColor } from '../src/pixel-it/types';
-import { hexToRgb } from '../src/pixel-it/utils/color-utils';
+import { PixelIt, BUILT_IN_PALETTES } from './pixel-it';
+import { hexToRgb } from './pixel-it/utils/color-utils';
+import type { RGBColor } from './pixel-it/types';
 
 // SlimSelect definition for TypeScript
 declare var SlimSelect: any;
@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Create pixel-it instance with default image
 	const px = new PixelIt({
 		from: document.getElementById('pixelitimg') as HTMLImageElement,
+		to: document.getElementById('pixelitcanvas') as HTMLCanvasElement,
 	});
 
 	// DOM elements
@@ -69,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 
 	// File input handler with loading indicator
-	document.getElementById('pixlInput')!.onchange = function (e) {
+	document.getElementById('pixlInput')!.onchange = (e) => {
 		const input = e.target as HTMLInputElement;
 		if (!input.files?.length) return;
 
