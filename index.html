@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelIt - Modern Pixel Art Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6a4c93;
+            --secondary: #1982c4;
+            --accent: #8ac926;
+            --light: #e9ecef;
+            --dark: #212529;
+            --success: #2dc653;
+            --warning: #ffca3a;
+            --danger: #ff595e;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: #f8f9fa;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Press Start 2P', cursive;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        h1 {
+            text-align: center;
+            margin: 2rem 0;
+            font-size: 2rem;
+            text-shadow: 3px 3px 0px var(--secondary);
+            color: var(--dark);
+            letter-spacing: 2px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .pixel-preview {
+            border: 3px dashed var(--light);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            text-align: center;
+            position: relative;
+            background: #ffffff;
+            margin-bottom: 20px;
+        }
+
+        #pixelitcanvas, #pixelitimg {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #pixelitimg {
+            display: none;
+        }
+
+        .controls {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 0.5rem;
+            width: 18px;
+            height: 18px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: var(--light);
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            margin: 10px 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--secondary);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--secondary);
+            cursor: pointer;
+            border: none;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid var(--light);
+            border-radius: var(--border-radius);
+            margin-top: 5px;
+        }
+
+        input[type="color"] {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            padding: 0;
+            cursor: pointer;
+            overflow: hidden;
+            margin-right: 10px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            margin-right: 10px;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: var(--dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .colorblock {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            margin: 3px;
+            border: 1px solid #ddd;
+        }
+
+        #palettecolor {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 10px 0;
+            min-height: 30px;
+            border: 1px solid var(--light);
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        #currentpallete {
+            min-height: 60px;
+            border: 1px dashed var(--light);
+            border-radius: var(--border-radius);
+            padding: 10px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .loader {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--border-radius);
+            z-index: 10;
+        }
+
+        .loader.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(106, 76, 147, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            font-size: 0.9rem;
+            color: #666;
+            border-top: 1px solid var(--light);
+        }
+
+        /* Custom styling for SlimSelect */
+        .ss-main {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        /* Ensure preview image doesn't get too large */
+        .ss-content .ss-list .ss-option .colorblock {
+            width: 16px;
+            height: 16px;
+            margin: 2px;
+        }
+
+        /* Helpful description text */
+        .help-text {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.1/slimselect.min.css" />
+</head>
+<body>
+    <header>
+        <h1>PixelIt <span style="font-size: 0.7em; vertical-align: super; color: var(--accent);">2.0</span></h1>
+    </header>
+
+    <div class="container">
+        <div class="left-column">
+            <div class="card">
+                <h2>Image Preview</h2>
+                <div class="pixel-preview">
+                    <img id="pixelitimg" src="assets/default-image.jpg" alt="Source Image" />
+                    <canvas id="pixelitcanvas"></canvas>
+                    <div class="loader">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <div class="file-input-wrapper">
+                    <button class="btn">Choose Image</button>
+                    <input type="file" id="pixlInput" accept="image/*" />
+                </div>
+                <button id="downloadimage" class="btn btn-success">Download Image</button>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="card">
+                <h2>Pixel Settings</h2>
+                
+                <div class="control-group">
+                    <label>Block Size: <span id="blockvalue">8</span></label>
+                    <input type="range" id="blocksize" min="1" max="50" value="8" />
+                    <p class="help-text">Controls the size of each pixel block.</p>
+                </div>
+                
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="greyscale" />
+                        Greyscale Effect
+                    </label>
+                    <p class="help-text">Convert image to black and white.</p>
+                </div>
+                
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="palette" checked />
+                        Apply Color Palette
+                    </label>
+                    <p class="help-text">Reduce colors to match the selected palette.</p>
+                </div>
+                
+                <div class="control-group">
+                    <label>Max Width:</label>
+                    <input type="number" id="maxwidth" placeholder="Auto" />
+                    <p class="help-text">Maximum width in pixels (leave empty for original size).</p>
+                </div>
+                
+                <div class="control-group">
+                    <label>Max Height:</label>
+                    <input type="number" id="maxheight" placeholder="Auto" />
+                    <p class="help-text">Maximum height in pixels (leave empty for original size).</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Color Palettes</h2>
+                <div class="control-group">
+                    <label>Select Palette:</label>
+                    <select id="paletteselector"></select>
+                    <div id="palettecolor"></div>
+                </div>
+
+                <h3>Custom Palette</h3>
+                <div class="control-group">
+                    <div style="display: flex; align-items: center;">
+                        <input type="color" id="customcolor" value="#ff00ff" />
+                        <button id="addcustomcolor" class="btn">Add Color</button>
+                    </div>
+                    <div id="currentpallete"></div>
+                    <div>
+                        <button id="savecustompalette" class="btn btn-primary">Save Palette</button>
+                        <button id="clearcustompalettes" class="btn btn-danger">Clear All Custom</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>PixelIt 2.0 - A modern pixel art generator built with TypeScript</p>
+        <p>© 2025 - <a href="https://github.com/yourusername/pixelit" target="_blank">GitHub</a></p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.1/slimselect.min.js"></script>
+    <script src="../dist/demo.js" type="module"></script>
+</body>
+</html>
