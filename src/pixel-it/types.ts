@@ -25,40 +25,44 @@ export interface PixelItConfig {
  * Configuration options for batch applying effects
  */
 export interface ApplyEffectsOptions {
-	/** Scale factor for pixelation (0-50) */
-	scale?: number;
-	/** Custom palette to use */
-	palette?: RGBColor[];
-	/** Palette index from available palettes */
-	paletteIndex?: number;
-	/** Whether to convert to grayscale */
-	grayscale?: boolean;
-	/** Whether to apply palette conversion */
-	applyPalette?: boolean;
-	/** Maximum width for the image */
-	maxWidth?: number;
-	/** Maximum height for the image */
-	maxHeight?: number;
-}
+		/** Scale factor for pixelation (0-50) */
+		scale?: number;
+		/** Custom palette to use */
+		palette?: RGBColor[];
+		/** Palette index from available palettes */
+		paletteIndex?: number;
+		/** Whether to convert to grayscale */
+		grayscale?: boolean;
+		/** Whether to apply palette conversion */
+		applyPalette?: boolean;
+		/** Maximum width for the image */
+		maxWidth?: number;
+		/** Maximum height for the image */
+		maxHeight?: number;
+		/** Enable debug features (like color counting) */
+		debug?: boolean;
+	}
 
 /**
  * Configuration options for binding to UI controls
  */
 export interface UIControlBindingOptions {
-	/** Input element for scale control */
-	scaleInput?: HTMLInputElement;
-	/** Select element for palette selection */
-	paletteSelect?: HTMLSelectElement;
-	/** Checkbox for grayscale toggle */
-	grayscaleCheckbox?: HTMLInputElement;
-	/** Checkbox for palette application toggle */
-	paletteCheckbox?: HTMLInputElement;
-	/** Input for max width */
-	maxWidthInput?: HTMLInputElement;
-	/** Input for max height */
-	maxHeightInput?: HTMLInputElement;
-	/** Button to download image */
-	downloadButton?: HTMLButtonElement;
-	/** Element to display palette preview */
-	palettePreview?: HTMLElement;
-}
+		/** Input element for scale control */
+		scaleInput?: HTMLInputElement;
+		/** Select element for palette selection */
+		paletteSelect?: HTMLSelectElement;
+		/** Checkbox for grayscale toggle */
+		grayscaleCheckbox?: HTMLInputElement;
+		/** Checkbox for palette application toggle */
+		paletteCheckbox?: HTMLInputElement;
+		/** Input for max width */
+		maxWidthInput?: HTMLInputElement;
+		/** Input for max height */
+		maxHeightInput?: HTMLInputElement;
+		/** Button to download image */
+		downloadButton?: HTMLButtonElement;
+		/** Element to display palette preview */
+		palettePreview?: HTMLElement;
+		/** Checkbox for enabling debug features */
+		debugCheckbox?: HTMLInputElement;
+	}

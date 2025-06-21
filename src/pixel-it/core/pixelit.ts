@@ -39,6 +39,8 @@ export class PixelIt {
 	private maxWidth?: number;
 	/** Stats about colors used in the converted image */
 	private endColorStats: Record<string, number> = {};
+	/** Collect color statistics */
+	private colorStatsEnabled: boolean = false;
 
 	/**
 	 * Create a new PixelIt instance
@@ -92,6 +94,16 @@ export class PixelIt {
 	}
 
 	/**
+	 * Enables or disables color statistics collection (for performance)
+	 * @param enable Whether to collect color statistics
+	 * @returns this (for method chaining)
+	 */
+	setColorStatsCollection(enable: boolean): this {
+		this.colorStatsEnabled = enable;
+		return this;
+	}
+
+	/**
 	 * Hides the source image element
 	 * @returns this (for method chaining)
 	 */
@@ -130,13 +142,13 @@ export class PixelIt {
 	}
 
 	/**
-	 * Sets the scale factor for pixelation
+	 * Sets the pixelation scale factor
 	 * @param scale Scale factor (1-50)
 	 * @returns this (for method chaining)
 	 */
 	setScale(scale: number): this {
-		// Valid range: 1 to 50
-		this.scale = scale && scale > 0 && scale <= 50 ? scale * 0.01 : this.scale;
+		// Match the original behavior: scale is between 1-50 and divided by 100
+		this.scale = scale > 0 && scale <= 50 ? scale * 0.01 : 8 * 0.01;
 		return this;
 	}
 
@@ -332,18 +344,104 @@ export class PixelIt {
 	 * Pixelates the image using the current scale
 	 * @returns this (for method chaining)
 	 */
+	/**
+	 * Pixelates the image using a temporary canvas for scaling
+	 * @returns this (for method chaining)
+	 */
 	pixelate(): this {
-		const width = this.drawto.width;
-		const height = this.drawto.height;
+		// Set canvas dimensions to match original image
+		this.drawto.width = this.drawfrom.naturalWidth;
+		this.drawto.height = this.drawfrom.naturalHeight;
 
-		// Calculate the size of each pixel block based on scale
-		const w = width * this.scale;
-		const h = height * this.scale;
+		// Calculate scaled dimensions
+		let scaledW = this.drawto.width * this.scale;
+		let scaledH = this.drawto.height * this.scale;
 
-		// Draw pixelated version
-		this.ctx.drawImage(this.drawto, 0, 0, w, h);
-		this.ctx.imageSmoothingEnabled = false; // Disable anti-aliasing
-		this.ctx.drawImage(this.drawto, 0, 0, w, h, 0, 0, width, height);
+		// Create temporary canvas for the scaled version
+		const tempCanvas = document.createElement('canvas');
+
+		// Set temp canvas width/height & hide
+		tempCanvas.width = this.drawto.width;
+		tempCanvas.height = this.drawto.height;
+		tempCanvas.style.visibility = 'hidden';
+		tempCanvas.style.position = 'fixed';
+		tempCanvas.style.top = '0';
+		tempCanvas.style.left = '0';
+
+		// Special handling for larger images
+		if (this.drawto.width > 900 || this.drawto.height > 900) {
+			// Reduce scale for large images
+			this.scale *= 0.5;
+			scaledW = this.drawto.width * this.scale;
+			scaledH = this.drawto.height * this.scale;
+
+			// Make temp canvas bigger to fit
+			tempCanvas.width = Math.max(scaledW, scaledH) + 50;
+			tempCanvas.height = Math.max(scaledW, scaledH) + 50;
+		}
+
+		// Get the temp canvas context and draw the downscaled image
+		const tempContext = tempCanvas.getContext('2d') as CanvasRenderingContext2D;
+		tempContext.drawImage(this.drawfrom, 0, 0, scaledW, scaledH);
+
+		// Temporarily add to body (needed for some browsers)
+		document.body.appendChild(tempCanvas);
+
+		// Disable image smoothing for pixelation effect
+		this.ctx.imageSmoothingEnabled = false;
+
+		// Calculate final dimensions with adjustments for larger images
+		let finalWidth = this.drawfrom.naturalWidth;
+		if (this.drawfrom.naturalWidth > 300) {
+			finalWidth +=
+				this.drawfrom.naturalWidth > this.drawfrom.naturalHeight
+					? parseInt(
+							String(
+								this.drawfrom.naturalWidth /
+									(this.drawfrom.naturalWidth * this.scale),
+							),
+						) / 1.5
+					: parseInt(
+							String(
+								this.drawfrom.naturalWidth /
+									(this.drawfrom.naturalWidth * this.scale),
+							),
+						);
+		}
+
+		let finalHeight = this.drawfrom.naturalHeight;
+		if (this.drawfrom.naturalHeight > 300) {
+			finalHeight +=
+				this.drawfrom.naturalHeight > this.drawfrom.naturalWidth
+					? parseInt(
+							String(
+								this.drawfrom.naturalHeight /
+									(this.drawfrom.naturalHeight * this.scale),
+							),
+						) / 1.5
+					: parseInt(
+							String(
+								this.drawfrom.naturalHeight /
+									(this.drawfrom.naturalHeight * this.scale),
+							),
+						);
+		}
+
+		// Draw the pixelated image to the final canvas with correct dimensions
+		this.ctx.drawImage(
+			tempCanvas,
+			0,
+			0,
+			scaledW,
+			scaledH,
+			0,
+			0,
+			finalWidth,
+			finalHeight,
+		);
+
+		// Remove the temporary canvas
+		tempCanvas.remove();
 
 		return this;
 	}
@@ -404,13 +502,17 @@ export class PixelIt {
 			data[i + 2] = similarColor[2]; // B
 			// Alpha channel (data[i + 3]) remains unchanged
 
-			// Count colors for statistics
-			const colorKey = similarColor.join(',');
-			this._countColor(colorKey, colorStats);
+			// Only count colors if debug mode is enabled
+			if (this.colorStatsEnabled) {
+				const colorKey = similarColor.join(',');
+				this._countColor(colorKey, colorStats);
+			}
 		}
 
-		// Store color usage statistics
-		this.endColorStats = colorStats;
+		if (this.colorStatsEnabled) {
+			// Store the color statistics
+			this.endColorStats = colorStats;
+		}
 
 		// Put the modified image data back on the canvas
 		this.ctx.putImageData(imageData, 0, 0);
@@ -446,6 +548,10 @@ export class PixelIt {
 		// Apply scale if specified
 		if (options.scale) {
 			this.setScale(options.scale);
+		}
+
+		if (options.debug !== undefined) {
+			this.setColorStatsCollection(options.debug);
 		}
 
 		// Set palette from options or index

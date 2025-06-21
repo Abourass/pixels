@@ -33,7 +33,7 @@
             color: var(--dark);
             background-color: #f8f9fa;
             padding: 20px;
-            max-width: 1200px;
+            max-width: 1400px; /* Increased maximum width */
             margin: 0 auto;
         }
 
@@ -52,14 +52,26 @@
             letter-spacing: 2px;
         }
 
+        /* Modified layout structure */
         .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .preview-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .controls-container {
             display: grid;
             grid-template-columns: 1fr;
             gap: 20px;
         }
 
         @media (min-width: 768px) {
-            .container {
+            .controls-container {
                 grid-template-columns: 1fr 1fr;
             }
         }
@@ -79,18 +91,30 @@
             text-align: center;
             position: relative;
             background: #ffffff;
-            margin-bottom: 20px;
+            min-height: 300px; /* Minimum height */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        #pixelitcanvas, #pixelitimg {
+        #pixelitcanvas {
             max-width: 100%;
+            max-height: 70vh; /* Limit height to 70% of viewport height */
+            width: auto; /* Allow canvas to maintain aspect ratio */
             height: auto;
             display: block;
             margin: 0 auto;
+            object-fit: contain; /* Ensure image maintains aspect ratio */
         }
 
         #pixelitimg {
             display: none;
+        }
+
+        .preview-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
         }
 
         .controls {
@@ -309,6 +333,58 @@
             color: #666;
             margin-top: 5px;
         }
+
+        /* Toggle for preview size */
+        .size-toggle {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .zoom-btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8rem;
+        }
+
+        /* Expanded preview class */
+        .fullscreen-preview {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .fullscreen-preview #pixelitcanvas {
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        .close-fullscreen {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.1/slimselect.min.css" />
 </head>
@@ -318,9 +394,12 @@
     </header>
 
     <div class="container">
-        <div class="left-column">
+        <!-- Main Preview Area - Now Full Width -->
+        <div class="preview-container">
             <div class="card">
-                <h2>Image Preview</h2>
+                <div class="size-toggle">
+                    <button id="fullscreen-toggle" class="zoom-btn">Fullscreen</button>
+                </div>
                 <div class="pixel-preview">
                     <img id="pixelitimg" src="assets/default-image.jpg" alt="Source Image" />
                     <canvas id="pixelitcanvas"></canvas>
@@ -329,15 +408,18 @@
                     </div>
                 </div>
 
-                <div class="file-input-wrapper">
-                    <button class="btn">Choose Image</button>
-                    <input type="file" id="pixlInput" accept="image/*" />
+                <div class="preview-actions">
+                    <div class="file-input-wrapper">
+                        <button class="btn">Choose Image</button>
+                        <input type="file" id="pixlInput" accept="image/*" />
+                    </div>
+                    <button id="downloadimage" class="btn btn-success">Download Image</button>
                 </div>
-                <button id="downloadimage" class="btn btn-success">Download Image</button>
             </div>
         </div>
 
-        <div class="right-column">
+        <!-- Controls in Two Columns Below -->
+        <div class="controls-container">
             <div class="card">
                 <h2>Pixel Settings</h2>
                 
@@ -361,6 +443,14 @@
                         Apply Color Palette
                     </label>
                     <p class="help-text">Reduce colors to match the selected palette.</p>
+                </div>
+                
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="debug" />
+                        Debug Mode (Color Stats)
+                    </label>
+                    <p class="help-text">Enable color statistics (may slow down for large images).</p>
                 </div>
                 
                 <div class="control-group">
@@ -405,7 +495,46 @@
         <p>© 2025 - <a href="https://github.com/yourusername/pixelit" target="_blank">GitHub</a></p>
     </footer>
 
+    <!-- Fullscreen preview container -->
+    <div id="fullscreen-preview-container" style="display: none;"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.1/slimselect.min.js"></script>
     <script type="module" src="/src/demo.ts"></script>
+
+    <script>
+        // Add fullscreen preview functionality
+        document.getElementById('fullscreen-toggle').addEventListener('click', function() {
+            const preview = document.querySelector('.pixel-preview');
+            const container = document.getElementById('fullscreen-preview-container');
+            const canvas = document.getElementById('pixelitcanvas');
+            
+            // Create fullscreen view
+            container.className = 'fullscreen-preview';
+            container.style.display = 'flex';
+            
+            // Clone canvas to fullscreen container
+            const clonedCanvas = canvas.cloneNode(true);
+            
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-fullscreen';
+            closeBtn.innerHTML = '×';
+            closeBtn.addEventListener('click', function() {
+                container.style.display = 'none';
+                container.innerHTML = '';
+            });
+            
+            container.appendChild(clonedCanvas);
+            container.appendChild(closeBtn);
+            
+            // Close on ESC key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && container.style.display === 'flex') {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
