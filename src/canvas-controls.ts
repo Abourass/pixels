@@ -18,6 +18,7 @@ interface ControlState {
 	usePalette: boolean;
 	paletteIndex: number;
 	isOpen: boolean;
+	sizePercentage: number;
 	maxWidth?: number;
 	maxHeight?: number;
 }
@@ -38,8 +39,28 @@ export function createCanvasControls(options: CanvasControlOptions) {
 	const [paletteIndex, setPaletteIndex] = createSignal(0);
 	const [isOpen, setIsOpen] = createSignal(false);
 	const [isProcessing, setIsProcessing] = createSignal(false);
+	const [sizePercentage, setSizePercentage] = createSignal<number | undefined>(
+		undefined,
+	); // No default
 	const [maxWidth, setMaxWidth] = createSignal<number | undefined>(undefined);
 	const [maxHeight, setMaxHeight] = createSignal<number | undefined>(undefined);
+	const [originalWidth, setOriginalWidth] = createSignal<number>(0);
+	const [originalHeight, setOriginalHeight] = createSignal<number>(0);
+
+	// Get original dimensions from the source image element
+	const updateOriginalDimensions = () => {
+		const imgElement = document.getElementById(
+			'pixelitimg',
+		) as HTMLImageElement;
+
+		if (imgElement?.naturalWidth && imgElement?.naturalHeight) {
+			setOriginalWidth(imgElement.naturalWidth);
+			setOriginalHeight(imgElement.naturalHeight);
+		}
+	};
+
+	// Call once to initialize
+	setTimeout(updateOriginalDimensions, 500); // Give time for the image to load
 
 	// Create the controls container
 	const controlsElement = document.createElement('div');
@@ -59,15 +80,15 @@ export function createCanvasControls(options: CanvasControlOptions) {
 			paletteNames[i] = `Custom ${i - startIndex + 1}`;
 		}
 	}
-  
-  // Generate palette HTML with names
-		const palettesHtml = paletteList
-			.map((palette, idx) => {
-				const paletteName =
-					idx < paletteNames.length
-						? paletteNames[idx]
-						: `Custom ${idx - paletteNames.length + 1}`;
-				return `
+
+	// Generate palette HTML with names
+	const palettesHtml = paletteList
+		.map((palette, idx) => {
+			const paletteName =
+				idx < paletteNames.length
+					? paletteNames[idx]
+					: `Custom ${idx - paletteNames.length + 1}`;
+			return `
           <div class="palette-option ${idx === 0 ? 'active' : ''}" data-index="${idx}">
             <div class="palette-name">${paletteName}</div>
             <div class="palette-colors">
@@ -81,8 +102,8 @@ export function createCanvasControls(options: CanvasControlOptions) {
             </div>
           </div>
         `;
-			})
-			.join('');
+		})
+		.join('');
 
 	controlsElement.innerHTML = `
     <div class="pixel-size-control">
@@ -100,32 +121,27 @@ export function createCanvasControls(options: CanvasControlOptions) {
         </svg>
       </button>
       <div class="controls-panel">
-        <div class="control-item">
+        <div class="control-item checkboxes-row">
           <label>
             <input type="checkbox" class="grayscale-check" />
             Grayscale
           </label>
-        </div>
-        <div class="control-item">
           <label>
             <input type="checkbox" class="palette-check" checked />
             Use Palette
           </label>
         </div>
         <div class="control-item">
-          <label>Max Size:</label>
-          <div class="max-size-controls">
-            <div class="max-size-input-group">
-              <input type="number" class="max-width-input" placeholder="Auto" min="1" />
-              <div class="input-label">Width</div>
-            </div>
-            <div class="max-size-input-group">
-              <input type="number" class="max-height-input" placeholder="Auto" min="1" />
-              <div class="input-label">Height</div>
-            </div>
+          <label>Image Size:</label>
+          <div class="size-percentage-controls">
+            <button class="size-btn" data-size="20">20%</button>
+            <button class="size-btn" data-size="35">35%</button>
+            <button class="size-btn" data-size="50">50%</button>
+            <button class="size-btn" data-size="65">65%</button>
+            <button class="size-btn" data-size="80">80%</button>
           </div>
         </div>
-        <div class="control-item palette-select-container">
+<div class="control-item palette-select-container">
           <label>Palette:</label>
           <div class="palette-options">
             ${palettesHtml}
@@ -159,19 +175,15 @@ export function createCanvasControls(options: CanvasControlOptions) {
 	) as HTMLInputElement;
 	const paletteOptionElements =
 		controlsElement.querySelectorAll<HTMLElement>('.palette-option');
-	const maxWidthInput = controlsElement.querySelector(
-		'.max-width-input',
-	) as HTMLInputElement;
-	const maxHeightInput = controlsElement.querySelector(
-		'.max-height-input',
-	) as HTMLInputElement;
+	const sizeButtons =
+		controlsElement.querySelectorAll<HTMLElement>('.size-btn');
 
 	// Setup event listeners
 	toggleButton.addEventListener('click', () => {
 		setIsOpen(!isOpen());
 		controlsPanel.classList.toggle('active', isOpen());
 	});
-	
+
 	scaleSlider.addEventListener('input', (e: Event) => {
 		const value = (e.target as HTMLInputElement).value;
 		setScale(Number(value));
@@ -197,18 +209,59 @@ export function createCanvasControls(options: CanvasControlOptions) {
 		setUsePalette((e.target as HTMLInputElement).checked);
 		applyChanges();
 	});
-	
-	maxWidthInput.addEventListener('change', (e: Event) => {
-		const value = (e.target as HTMLInputElement).value;
-		setMaxWidth(value ? Number(value) : undefined);
-		applyChanges();
+
+	// Add event listeners for size buttons
+	sizeButtons.forEach((button) => {
+		button.addEventListener('click', () => {
+			// Check if the button is already active
+			const isAlreadyActive = button.classList.contains('active');
+
+			// Remove active class from all buttons
+			sizeButtons.forEach((btn) => btn.classList.remove('active'));
+
+			// If the button was already active, deselect it (toggle behavior)
+			// Otherwise, make it active
+			if (!isAlreadyActive) {
+				button.classList.add('active');
+				const percentage = Number(button.dataset.size || 0);
+				setSizePercentage(percentage);
+				calculateAndApplySizing(percentage);
+			} else {
+				// No size selected, remove constraints
+				setSizePercentage(undefined);
+				calculateAndApplySizing(undefined);
+			}
+		});
 	});
 
-	maxHeightInput.addEventListener('change', (e: Event) => {
-		const value = (e.target as HTMLInputElement).value;
-		setMaxHeight(value ? Number(value) : undefined);
-		applyChanges();
-	});
+	// Calculate sizing based on percentage and apply
+	const calculateAndApplySizing = (percentage?: number) => {
+		// If percentage is undefined, remove size constraints
+		if (percentage === undefined) {
+			setMaxWidth(undefined);
+			setMaxHeight(undefined);
+			applyChanges();
+			return;
+		}
+
+		// Get the image from document if available
+		const imgElement = document.getElementById(
+			'pixelitimg',
+		) as HTMLImageElement;
+
+		if (imgElement?.naturalWidth && imgElement?.naturalHeight) {
+			const calculatedWidth = Math.floor(
+				imgElement.naturalWidth * (percentage / 100),
+			);
+			const calculatedHeight = Math.floor(
+				imgElement.naturalHeight * (percentage / 100),
+			);
+
+			setMaxWidth(calculatedWidth);
+			setMaxHeight(calculatedHeight);
+			applyChanges();
+		}
+	};
 
 	paletteOptionElements.forEach((option: Element) => {
 		option.addEventListener('click', (e: Event) => {
@@ -245,6 +298,9 @@ export function createCanvasControls(options: CanvasControlOptions) {
 				maxWidth: maxWidth(),
 				maxHeight: maxHeight(),
 			});
+
+			// Update original dimensions after applying effects
+			setTimeout(updateOriginalDimensions, 100);
 		} finally {
 			setIsProcessing(false);
 			controlsElement.classList.toggle('processing', false);
@@ -260,6 +316,7 @@ export function createCanvasControls(options: CanvasControlOptions) {
 			usePalette: usePalette(),
 			paletteIndex: paletteIndex(),
 			isOpen: isOpen(),
+			sizePercentage: sizePercentage(),
 			maxWidth: maxWidth(),
 			maxHeight: maxHeight(),
 		}),
@@ -272,6 +329,11 @@ export function createCanvasControls(options: CanvasControlOptions) {
 				setIsOpen(state.isOpen!);
 				controlsPanel.classList.toggle('active', state.isOpen!);
 			}
+			if ('sizePercentage' in state) {
+				setSizePercentage(state.sizePercentage!);
+				// Apply the size percentage
+				calculateAndApplySizing(state.sizePercentage!);
+			}
 			if ('maxWidth' in state) setMaxWidth(state.maxWidth);
 			if ('maxHeight' in state) setMaxHeight(state.maxHeight);
 
@@ -280,9 +342,19 @@ export function createCanvasControls(options: CanvasControlOptions) {
 			scaleInputEl.value = String(scale());
 			grayscaleCheck.checked = grayscale();
 			paletteCheck.checked = usePalette();
-			maxWidthInput.value = maxWidth() !== undefined ? String(maxWidth()) : '';
-			maxHeightInput.value =
-				maxHeight() !== undefined ? String(maxHeight()) : '';
+
+			// Update size buttons to reflect current size percentage
+			sizeButtons.forEach((button) => {
+				const buttonSize = Number(button.dataset.size || 0);
+				const currentSize = sizePercentage();
+
+				// If no size percentage is set or doesn't match any button, no button is active
+				if (currentSize !== undefined && buttonSize === currentSize) {
+					button.classList.add('active');
+				} else {
+					button.classList.remove('active');
+				}
+			});
 
 			paletteOptionElements.forEach((option, i) => {
 				if (i === paletteIndex()) {

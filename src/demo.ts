@@ -260,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		usePalette: palette.checked,
 		paletteIndex: 0,
 		isOpen: true, // Set to true to show palette options by default
+		// No default size percentage
 		maxWidth: maxwidth.value ? Number(maxwidth.value) : undefined,
 		maxHeight: maxheight.value ? Number(maxheight.value) : undefined,
 	});
