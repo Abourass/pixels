@@ -44,20 +44,50 @@ document.addEventListener('DOMContentLoaded', () => {
 		px.addPalette(palette);
 	});
 
-	// Extract palette names from BUILT_IN_PALETTES
-	const paletteNames = Object.keys(BUILT_IN_PALETTES).map((name) => {
-		// Format palette name for display (e.g. EARTH_TONES -> Earth Tones)
-		return name
-			.split('_')
-			.map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-			.join(' ');
-	});
+	// Storage for palette names
+	let paletteNames: string[] = [];
+  
+	// Function to populate palette names
+	// Update the updatePaletteNames function to correctly synchronize built-in and custom palette names
 
-	// Add custom palette names
-	const customPaletteCount = customPalettes.length;
-	for (let i = 0; i < customPaletteCount; i++) {
-		paletteNames.push(`Custom ${i + 1}`);
-	}
+function updatePaletteNames() {
+    // Reset the array
+    paletteNames = [];
+    
+    // Get all built-in palette names first
+    const builtInPaletteNames = Object.keys(BUILT_IN_PALETTES).map(name => {
+        return name
+            .split('_')
+            .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+            .join(' ');
+    });
+    
+    // Add built-in palette names
+    paletteNames = [...builtInPaletteNames];
+    
+    // Add custom palette names from localStorage
+    const customPaletteNames = JSON.parse(
+        localStorage.getItem('customPaletteNames') || '[]'
+    );
+    
+    if (customPaletteNames.length > 0) {
+        // Use the stored names if available
+        paletteNames = paletteNames.concat(customPaletteNames);
+    } else {
+        // Use generic names when custom names aren't available
+        const customPaletteCount = customPalettes.length;
+        for (let i = 0; i < customPaletteCount; i++) {
+            paletteNames.push(`Custom ${i + 1}`);
+        }
+    }
+    
+    // Verify that the paletteNames length matches the total number of palettes
+    const totalPalettes = Object.keys(BUILT_IN_PALETTES).length + customPalettes.length;
+    console.log(`Palette names: ${paletteNames.length}, Total palettes: ${totalPalettes}`);
+}
+	
+	// Initialize palette names
+	updatePaletteNames();
 
 	// Bind UI controls to the PixelIt instance
 	px.bindToControls({
@@ -146,9 +176,24 @@ document.addEventListener('DOMContentLoaded', () => {
 			const existingPalettes = JSON.parse(
 				localStorage.getItem('customPalettes') || '[]',
 			);
+			
+			// Get existing palette names
+			const existingPaletteNames = JSON.parse(
+				localStorage.getItem('customPaletteNames') || '[]'
+			);
+			
+			// Add a generic name for this new custom palette
+			const newName = `Custom ${existingPalettes.length + 1}`;
+			existingPaletteNames.push(newName);
+			
+			// Save everything to localStorage
 			existingPalettes.push(palette);
 			localStorage.setItem('customPalettes', JSON.stringify(existingPalettes));
+			localStorage.setItem('customPaletteNames', JSON.stringify(existingPaletteNames));
 
+			// Update our palette names array
+			updatePaletteNames();
+			
 			// Add to PixelIt instance
 			px.addPalette(palette);
 
@@ -157,6 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			// Rebuild the palette selector
 			populatePaletteSelector();
+			
+			// Show feedback to the user
+			alert(`Custom palette "${newName}" saved successfully!`);
 		});
 
 	// Clear custom palettes
@@ -164,10 +212,169 @@ document.addEventListener('DOMContentLoaded', () => {
 		.getElementById('clearcustompalettes')!
 		.addEventListener('click', () => {
 			localStorage.setItem('customPalettes', JSON.stringify([]));
+			localStorage.setItem('customPaletteNames', JSON.stringify([]));
 
 			// Reload the page to reset everything
 			location.reload();
 		});
+		
+	// Process hex file upload
+	document.getElementById('hexPaletteInput')!.onchange = (e) => {
+		const input = e.target as HTMLInputElement;
+		if (!input.files?.length) return;
+		
+		const file = input.files[0];
+		
+		// Validate file extension
+		const validExtensions = ['.hex', '.txt'];
+		const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+		
+		if (!validExtensions.includes(fileExtension)) {
+			alert('Please upload a .hex or .txt file containing hex color codes.');
+			input.value = ''; // Reset input
+			return;
+		}
+		
+		// Create palette name from filename
+		const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+		const paletteName = fileName.split(/[_\-\s]/)
+			.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+			.join(' ');
+		
+		const reader = new FileReader();
+		reader.onload = (event) => {
+			const text = event.target?.result as string;
+			if (!text) return;
+			
+			// Process the hex file - expecting one hex color per line
+			const hexColors = text.split('\n')
+				.map(line => line.trim()) // Remove whitespace
+				.filter(line => {
+					if (!line || line.startsWith('//') || line.startsWith('#!') || line.startsWith('/*')) {
+						return false; // Skip empty lines and comments
+					}
+					
+					// Check for valid hex formats #RGB or #RRGGBB
+					if (/^#[0-9A-Fa-f]{6}$/.test(line)) {
+						return true; // Standard #RRGGBB format
+					}
+					
+					// Check for hex without # prefix
+					if (/^[0-9A-Fa-f]{6}$/.test(line)) {
+						return true; // RRGGBB format without #
+					}
+					
+					// Check for 3-character hex format
+					if (/^#[0-9A-Fa-f]{3}$/.test(line)) {
+						return true; // #RGB format
+					}
+					
+					return false;
+				})
+				.map(line => {
+					// Normalize all colors to #RRGGBB format
+					if (!line.startsWith('#')) {
+						line = '#' + line;
+					}
+					
+					// Convert #RGB to #RRGGBB if needed
+					if (line.length === 4) {
+						const r = line[1];
+						const g = line[2];
+						const b = line[3];
+						line = `#${r}${r}${g}${g}${b}${b}`;
+					}
+					
+					return line;
+				});
+			
+			if (hexColors.length === 0) {
+				alert('No valid hex colors found in file. Format should be one #RRGGBB color per line.');
+				return;
+			}
+			
+			// Convert hex colors to RGB format
+			const rgbColors: RGBColor[] = hexColors.map(hex => hexToRgb(hex));
+			
+			// Check if the exact same palette already exists
+			const existingPalettes = JSON.parse(
+				localStorage.getItem('customPalettes') || '[]',
+			);
+			
+			// Convert to strings for comparison
+			const newPaletteString = JSON.stringify(rgbColors);
+			const isDuplicate = existingPalettes.some((palette: RGBColor[]) => {
+				return JSON.stringify(palette) === newPaletteString;
+			});
+			
+			if (isDuplicate) {
+				alert('This exact palette already exists in your custom palettes.');
+				input.value = ''; // Reset input
+				return;
+			}
+			
+			// Get existing palette names
+			const existingPaletteNames = JSON.parse(
+				localStorage.getItem('customPaletteNames') || '[]'
+			);
+			
+			// Add the new palette to localStorage
+			existingPalettes.push(rgbColors);
+			existingPaletteNames.push(paletteName);
+			
+			localStorage.setItem('customPalettes', JSON.stringify(existingPalettes));
+			localStorage.setItem('customPaletteNames', JSON.stringify(existingPaletteNames));
+			
+			// Update our palette names array
+			updatePaletteNames();
+			
+			// Add to PixelIt instance
+			px.addPalette(rgbColors);
+			
+			// Get the new palette index (it's the last one in the list)
+			const newPaletteIndex = px.getAvailablePalettes().length - 1;
+			
+			// Rebuild the palette selector to include the new palette
+			populatePaletteSelector();
+			
+			// Show loading indicator and apply the new palette
+			withLoading(async () => {
+				// Use the applyEffects method with the selected palette
+				palette.checked = true; // Force palette mode on
+				await px.applyEffects({
+					paletteIndex: newPaletteIndex,
+					scale: Number(blocksize.value),
+					grayscale: greyscale.checked,
+					applyPalette: true,
+					maxHeight: maxheight.value ? Number(maxheight.value) : undefined,
+					maxWidth: maxwidth.value ? Number(maxwidth.value) : undefined,
+				});
+				
+				// Update the SlimSelect dropdown to show the new palette
+				// @ts-ignore - SlimSelect adds this property to the DOM element
+				const slimSelect = document.querySelector('.ss-main')?.__slimSelect__;
+				if (slimSelect) {
+					slimSelect.set(newPaletteIndex.toString());
+				}
+				
+				// Update canvas controls
+				canvasControls.setState({
+					paletteIndex: newPaletteIndex,
+					usePalette: true
+				});
+				
+				// Reset the file input
+				input.value = '';
+				
+				// Alert the user
+				setTimeout(() => {
+					alert(`Palette "${paletteName}" imported successfully with ${hexColors.length} colors and applied to the image.`);
+				}, 300); // Small delay after loading indicator disappears
+			});
+		};
+		
+		reader.readAsText(file);
+	};
 
 	// Populate palette selector with available palettes
 	function populatePaletteSelector() {
@@ -182,9 +389,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			const option = document.createElement('option');
 			option.value = index.toString();
 
-			// Use the same palette names we created for the canvas controls
+			// Use the palette names from our array
 			if (index < paletteNames.length) {
 				option.textContent = paletteNames[index];
+			} else {
+				// Fallback for any palettes that might not have a name
+				option.textContent = `Palette ${index + 1}`;
 			}
 
 			// Create color blocks for preview
@@ -200,7 +410,16 @@ document.addEventListener('DOMContentLoaded', () => {
 			paletteSelect.appendChild(option);
 		});
 
-		// Initialize SlimSelect
+		// Initialize or update SlimSelect
+		const existingSlimSelectEl = document.querySelector('.ss-main');
+		// @ts-ignore - SlimSelect adds this property to the DOM element
+		const existingSlimSelect = existingSlimSelectEl?.__slimSelect__;
+		if (existingSlimSelect) {
+			// If SlimSelect already exists, destroy it before recreating
+			existingSlimSelect.destroy();
+		}
+		
+		// Create new SlimSelect instance
 		new SlimSelect({
 			hideSelectedOption: true,
 			showSearch: false,

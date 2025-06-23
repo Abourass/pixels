@@ -66,6 +66,19 @@ export function rgbToHex(color: RGBColor): string {
 }
 
 export function hexToRgb(hex: string): RGBColor {
+	// Ensure hex starts with #
+	if (!hex.startsWith('#')) {
+		hex = '#' + hex;
+	}
+	
+	// Handle #RGB format (convert to #RRGGBB)
+	if (hex.length === 4) {
+		const r = hex[1];
+		const g = hex[2];
+		const b = hex[3];
+		hex = `#${r}${r}${g}${g}${b}${b}`;
+	}
+	
 	const r = parseInt(hex.substring(1, 3), 16);
 	const g = parseInt(hex.substring(3, 5), 16);
 	const b = parseInt(hex.substring(5, 7), 16);
