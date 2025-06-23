@@ -1,6 +1,8 @@
-import { PixelItWorker, BUILT_IN_PALETTES } from './pixel-it';
-import { hexToRgb } from './pixel-it/utils/color-utils';
+import { createCanvasControls } from './canvas-controls';
+import './canvas-controls.css';
+import { BUILT_IN_PALETTES, PixelItWorker } from './pixel-it';
 import type { RGBColor } from './pixel-it/types';
+import { hexToRgb } from './pixel-it/utils/color-utils';
 
 // SlimSelect definition for TypeScript
 declare var SlimSelect: any;
@@ -30,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const loaderElement = document.querySelector<HTMLElement>('.loader')!;
 
 	// Load all built-in palettes
-	Object.entries(BUILT_IN_PALETTES).forEach(([name, colors]) => {
+	Object.entries(BUILT_IN_PALETTES).forEach(([_, colors]) => {
 		px.addPalette(colors);
 	});
 
@@ -65,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		try {
 			// Add small delay to ensure loader is visible
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 			await callback();
 		} finally {
 			// Add small delay before removing loader
@@ -203,6 +205,39 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Initialize the UI
 	populatePaletteSelector();
 	blocksizeValue.innerText = blocksize.value;
+
+	// Add canvas controls
+	const previewContainer = document.querySelector(
+		'.pixel-preview',
+	) as HTMLElement;
+
+	// Get available palettes
+	const availablePalettes = px.getAvailablePalettes();
+
+	// Create canvas controls
+	const canvasControls = createCanvasControls({
+		pixelIt: px,
+		container: previewContainer,
+		paletteList: availablePalettes,
+		onPaletteChange: (index) => {
+			// Update the SlimSelect dropdown to stay in sync
+			// This is a hack to access the SlimSelect instance
+			// @ts-ignore - SlimSelect adds this property to the DOM element
+			const slimSelect = document.querySelector('.ss-main')?.__slimSelect__;
+			if (slimSelect) {
+				slimSelect.set(index.toString());
+			}
+		},
+	});
+
+	// Initialize the control state
+	canvasControls.setState({
+		scale: Number(blocksize.value),
+		grayscale: greyscale.checked,
+		usePalette: palette.checked,
+		paletteIndex: 0,
+		isOpen: false,
+	});
 
 	// Run initial pixelation with default settings
 	withLoading(async () => {
