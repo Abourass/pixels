@@ -7,6 +7,7 @@ interface CanvasControlOptions {
 	pixelIt: PixelItWorker;
 	container: HTMLElement;
 	paletteList: RGBColor[][];
+	paletteNames?: string[]; // Optional array of palette names that correspond to paletteList
 	onPaletteChange?: (paletteIndex: number) => void;
 }
 
@@ -22,7 +23,13 @@ interface ControlState {
 }
 
 export function createCanvasControls(options: CanvasControlOptions) {
-	const { pixelIt, container, paletteList, onPaletteChange } = options;
+	const {
+		pixelIt,
+		container,
+		paletteList,
+		paletteNames: providedPaletteNames,
+		onPaletteChange,
+	} = options;
 
 	// Create signals for state
 	const [scale, setScale] = createSignal(8);
@@ -36,25 +43,20 @@ export function createCanvasControls(options: CanvasControlOptions) {
 
 	// Create the controls container
 	const controlsElement = document.createElement('div');
-	controlsElement.classList.add('canvas-controls'); // Map palette names from BUILT_IN_PALETTES  // Try to get palette names - fallback to generic names if not available
-	const paletteNames: string[] = [];
-	try {
-		// Try to get from global BUILT_IN_PALETTES
-		const globalPalettes = (window as any).BUILT_IN_PALETTES;
-		if (globalPalettes && typeof globalPalettes === 'object') {
-			Object.keys(globalPalettes).forEach((name) => {
-				// Format palette name for display (e.g. EARTH_TONES -> Earth Tones)
-				const formattedName = name
-					.split('_')
-					.map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-					.join(' ');
-				paletteNames.push(formattedName);
-			});
-		}
-	} catch (_) {
-		// Fallback with generic names
-		for (let i = 0; i < paletteList.length; i++) {
-			paletteNames.push(i === 0 ? 'Default' : `Palette ${i}`);
+	controlsElement.classList.add('canvas-controls');
+
+	// Use provided names or generate fallbacks
+	const paletteNames: string[] = providedPaletteNames || [];
+
+	if (
+		!providedPaletteNames ||
+		providedPaletteNames.length < paletteList.length
+	) {
+		// If no palette names were provided or not enough, generate fallback names
+		// Start from the length of provided names (might be 0 if none provided)
+		const startIndex = paletteNames.length;
+		for (let i = startIndex; i < paletteList.length; i++) {
+			paletteNames[i] = `Custom ${i - startIndex + 1}`;
 		}
 	}
   

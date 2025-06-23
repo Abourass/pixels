@@ -44,6 +44,21 @@ document.addEventListener('DOMContentLoaded', () => {
 		px.addPalette(palette);
 	});
 
+	// Extract palette names from BUILT_IN_PALETTES
+	const paletteNames = Object.keys(BUILT_IN_PALETTES).map((name) => {
+		// Format palette name for display (e.g. EARTH_TONES -> Earth Tones)
+		return name
+			.split('_')
+			.map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+			.join(' ');
+	});
+
+	// Add custom palette names
+	const customPaletteCount = customPalettes.length;
+	for (let i = 0; i < customPaletteCount; i++) {
+		paletteNames.push(`Custom ${i + 1}`);
+	}
+
 	// Bind UI controls to the PixelIt instance
 	px.bindToControls({
 		scaleInput: blocksize,
@@ -167,12 +182,19 @@ document.addEventListener('DOMContentLoaded', () => {
 			const option = document.createElement('option');
 			option.value = index.toString();
 
+			// Use the same palette names we created for the canvas controls
+			if (index < paletteNames.length) {
+				option.textContent = paletteNames[index];
+			}
+
 			// Create color blocks for preview
 			colors.forEach((color: RGBColor) => {
 				const div = document.createElement('div');
 				div.className = 'colorblock';
 				div.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]},1)`;
-				option.appendChild(div);
+				if (!option.textContent) {
+					option.appendChild(div);
+				}
 			});
 
 			paletteSelect.appendChild(option);
@@ -219,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		pixelIt: px,
 		container: previewContainer,
 		paletteList: availablePalettes,
+		paletteNames: paletteNames,
 		onPaletteChange: (index) => {
 			// Update the SlimSelect dropdown to stay in sync
 			// This is a hack to access the SlimSelect instance
@@ -242,15 +265,13 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// Make sure the custom palette controls are properly set up
-	document
-		.querySelectorAll('#customcolor')
-		.forEach((elem) => {
-			(elem as HTMLInputElement).value = '#ff00ff';
-		});
+	document.querySelectorAll('#customcolor').forEach((elem) => {
+		(elem as HTMLInputElement).value = '#ff00ff';
+	});
 
 	// Expose BUILT_IN_PALETTES to window for palette name display
 	(window as any).BUILT_IN_PALETTES = BUILT_IN_PALETTES;
-	
+
 	// Run initial pixelation with default settings
 	withLoading(async () => {
 		await px.applyEffects({
