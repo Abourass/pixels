@@ -8,6 +8,7 @@ import { hexToRgb } from './pixel-it/utils/color-utils';
 declare var SlimSelect: any;
 
 document.addEventListener('DOMContentLoaded', () => {
+	console.log('---- DEBUG: PixelIt Initialization ----');
 	// Create pixel-it instance with default image using the worker implementation
 	const px = new PixelItWorker({
 		from: document.getElementById('pixelitimg') as HTMLImageElement,
@@ -31,21 +32,65 @@ document.addEventListener('DOMContentLoaded', () => {
 	) as HTMLElement;
 	const loaderElement = document.querySelector<HTMLElement>('.loader')!;
 
-	// Load all built-in palettes
-	Object.entries(BUILT_IN_PALETTES).forEach(([_, colors]) => {
-		px.addPalette(colors);
+	// Clear paletteNames array
+	let paletteNames: string[] = [];
+	console.log('---- DEBUG: Loading Built-in Palettes ----');
+	console.log('Built-in palette keys in original order:', Object.keys(BUILT_IN_PALETTES));
+
+	// First, load palette names to maintain the correct order
+	paletteNames = Object.keys(BUILT_IN_PALETTES).map(name => {
+		return name
+			.split('_')
+			.map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+			.join(' ');
+	});
+	console.log('Formatted palette names:', paletteNames);
+
+	// Get original keys in the exact order
+	const originalPaletteKeys = Object.keys(BUILT_IN_PALETTES);
+	console.log('Original palette keys:', originalPaletteKeys);
+	
+	// Clear the availablePalettes array to ensure we have completely manual control
+	px.clearPalettes();
+	
+	// Then load palettes in the SAME order as the original keys
+	originalPaletteKeys.forEach((key, index) => {
+		// Format the name for display
+		const formattedName = key
+			.split('_')
+			.map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+			.join(' ');
+		
+		paletteNames[index] = formattedName;
+		console.log(`Adding palette ${index}: Key=${key}, Name=${formattedName}`);
+		
+		// Force add the palette (we'll modify the worker method)
+		px.forceAddPalette(BUILT_IN_PALETTES[key]);
 	});
 
-	// Load custom palettes from localStorage
+	// Now load custom palettes from localStorage
 	const customPalettes = JSON.parse(
 		localStorage.getItem('customPalettes') || '[]',
 	);
-	customPalettes.forEach((palette: RGBColor[]) => {
-		px.addPalette(palette);
-	});
 
-	// Storage for palette names
-	let paletteNames: string[] = [];
+	// Get custom palette names
+	const customPaletteNames = JSON.parse(
+		localStorage.getItem('customPaletteNames') || '[]'
+	);
+
+	// Add custom palettes
+	customPalettes.forEach((palette: RGBColor[], index: number) => {
+		const builtInCount = Object.keys(BUILT_IN_PALETTES).length;
+		const totalIndex = builtInCount + index;
+		
+		px.forceAddPalette(palette);
+		
+		// Use stored custom name or fallback to generic name
+		const customName = customPaletteNames[index] || `Custom ${index + 1}`;
+		paletteNames.push(customName);
+		
+		console.log(`Adding custom palette ${index} (total index ${totalIndex}): Name=${customName}`);
+	});
   
 	// Function to populate palette names
 	// Update the updatePaletteNames function to correctly synchronize built-in and custom palette names
@@ -54,16 +99,17 @@ function updatePaletteNames() {
     // Reset the array
     paletteNames = [];
     
-    // Get all built-in palette names first
-    const builtInPaletteNames = Object.keys(BUILT_IN_PALETTES).map(name => {
-        return name
-            .split('_')
-            .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-            .join(' ');
+    // Get all built-in palette names in the exact order they were added
+    const originalPaletteKeys = Object.keys(BUILT_IN_PALETTES);
+    originalPaletteKeys.forEach(name => {
+        paletteNames.push(
+            name.split('_')
+                .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+                .join(' ')
+        );
     });
     
-    // Add built-in palette names
-    paletteNames = [...builtInPaletteNames];
+    console.log('Updated palette names:', paletteNames);
     
     // Add custom palette names from localStorage
     const customPaletteNames = JSON.parse(
@@ -81,7 +127,7 @@ function updatePaletteNames() {
         }
     }
     
-    // Verify that the paletteNames length matches the total number of palettes
+    // Debug - Verify that the paletteNames length matches the total number of palettes
     const totalPalettes = Object.keys(BUILT_IN_PALETTES).length + customPalettes.length;
     console.log(`Palette names: ${paletteNames.length}, Total palettes: ${totalPalettes}`);
 }
@@ -195,7 +241,7 @@ function updatePaletteNames() {
 			updatePaletteNames();
 			
 			// Add to PixelIt instance
-			px.addPalette(palette);
+			px.forceAddPalette(palette);
 
 			// Clear the palette builder
 			currentPaletteDiv.innerHTML = '';
@@ -329,7 +375,7 @@ function updatePaletteNames() {
 			updatePaletteNames();
 			
 			// Add to PixelIt instance
-			px.addPalette(rgbColors);
+			px.forceAddPalette(rgbColors);
 			
 			// Get the new palette index (it's the last one in the list)
 			const newPaletteIndex = px.getAvailablePalettes().length - 1;
@@ -378,11 +424,15 @@ function updatePaletteNames() {
 
 	// Populate palette selector with available palettes
 	function populatePaletteSelector() {
+		console.log('---- DEBUG: Populating Palette Selector ----');
+		console.log('Current paletteNames array:', paletteNames);
+		
 		// Clear existing options
 		paletteSelect.innerHTML = '';
 
 		// Get all palettes from PixelIt
 		const availablePalettes = px.getAvailablePalettes();
+		console.log(`Available palettes count: ${availablePalettes.length}`);
 
 		// Add options to select
 		availablePalettes.forEach((colors: RGBColor[], index: number) => {
@@ -392,9 +442,11 @@ function updatePaletteNames() {
 			// Use the palette names from our array
 			if (index < paletteNames.length) {
 				option.textContent = paletteNames[index];
+				console.log(`Palette ${index}: Name=${paletteNames[index]}, Colors=${colors.length}`);
 			} else {
 				// Fallback for any palettes that might not have a name
 				option.textContent = `Palette ${index + 1}`;
+				console.log(`Palette ${index}: Name=Palette ${index + 1} (fallback), Colors=${colors.length}`);
 			}
 
 			// Create color blocks for preview
@@ -446,7 +498,18 @@ function updatePaletteNames() {
 	// Initialize the UI
 	populatePaletteSelector();
 	blocksizeValue.innerText = blocksize.value;
-
+	
+	// Debug verification - check palette count matches name count
+	const finalAvailablePalettes = px.getAvailablePalettes();
+	console.log(`---- VERIFICATION ----`);
+	console.log(`Total palettes: ${finalAvailablePalettes.length}, Total names: ${paletteNames.length}`);
+	
+	if (finalAvailablePalettes.length !== paletteNames.length) {
+		console.error('ERROR: Palette count mismatch! This causes name-palette misalignment.');
+	} else {
+		console.log('SUCCESS: Palette count matches name count.');
+	}
+	
 	// Add canvas controls
 	const previewContainer = document.querySelector(
 		'.pixel-preview',
@@ -499,6 +562,28 @@ function updatePaletteNames() {
 			paletteIndex: 0,
 			grayscale: greyscale.checked,
 			applyPalette: palette.checked,
+		});
+
+		// Final debug - verify palette order matches names
+		console.log('---- DEBUG: Final Palette Check ----');
+		const finalAvailablePalettes = px.getAvailablePalettes();
+		console.log(`Total palettes: ${finalAvailablePalettes.length}, Total names: ${paletteNames.length}`);
+		
+		// Output first few colors for key palettes to help identify them
+		console.log('Key palette samples:');
+		['DEFAULT', 'NES', 'AQUA', 'ROSE'].forEach(name => {
+			const formattedName = name
+				.split('_')
+				.map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+				.join(' ');
+			
+			const index = paletteNames.findIndex(n => 
+				n.toLowerCase() === formattedName.toLowerCase());
+				
+			const paletteColors = finalAvailablePalettes[index];
+			const sampleColors = paletteColors ? paletteColors.slice(0, 2) : [];
+			
+			console.log(`${name} (index ${index}): ${JSON.stringify(sampleColors)}`);
 		});
 	});
 });

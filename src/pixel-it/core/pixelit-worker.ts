@@ -290,6 +290,28 @@ export class PixelItWorker {
   }
 
   /**
+   * Clears all available palettes
+   * @returns this (for method chaining)
+   */
+  clearPalettes(): this {
+    console.log('Clearing all palettes');
+    this.availablePalettes = [];
+    return this;
+  }
+
+  /**
+   * Forces adding a palette to available palettes without checking for duplicates
+   * @param palette RGB color palette to add
+   * @returns this (for method chaining)
+   */
+  forceAddPalette(palette: RGBColor[]): this {
+    const paletteIndex = this.availablePalettes.length;
+    console.log(`Worker forcing add palette at index ${paletteIndex}, with ${palette.length} colors`);
+    this.availablePalettes.push(palette);
+    return this;
+  }
+
+  /**
    * Adds a new palette to available palettes
    * @param palette RGB color palette to add
    * @returns this (for method chaining)
@@ -302,6 +324,8 @@ export class PixelItWorker {
     );
 
     if (!exists) {
+      const paletteIndex = this.availablePalettes.length;
+      console.log(`Worker adding palette at index ${paletteIndex}, with ${palette.length} colors`);
       this.availablePalettes.push(palette);
     }
 
@@ -313,6 +337,12 @@ export class PixelItWorker {
    * @returns Array of all palettes
    */
   getAvailablePalettes(): RGBColor[][] {
+    console.log(`Worker has ${this.availablePalettes.length} palettes available`);
+    // Debug log the first few colors of each palette
+    this.availablePalettes.forEach((palette, index) => {
+      const firstColors = palette.slice(0, 2);
+      console.log(`Palette ${index} first colors: [${firstColors.map(c => `[${c.join(',')}]`).join(', ')}]`);
+    });
     return this.availablePalettes;
   }
 
