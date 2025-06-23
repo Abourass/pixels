@@ -1,4 +1,4 @@
-import { PixelIt, BUILT_IN_PALETTES } from './pixel-it';
+import { PixelItWorker, BUILT_IN_PALETTES } from './pixel-it';
 import { hexToRgb } from './pixel-it/utils/color-utils';
 import type { RGBColor } from './pixel-it/types';
 
@@ -6,8 +6,8 @@ import type { RGBColor } from './pixel-it/types';
 declare var SlimSelect: any;
 
 document.addEventListener('DOMContentLoaded', () => {
-	// Create pixel-it instance with default image
-	const px = new PixelIt({
+	// Create pixel-it instance with default image using the worker implementation
+	const px = new PixelItWorker({
 		from: document.getElementById('pixelitimg') as HTMLImageElement,
 		to: document.getElementById('pixelitcanvas') as HTMLCanvasElement,
 	});
@@ -60,13 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// Custom function to show/hide loader during operations
-	const withLoading = (callback: () => void) => {
+	const withLoading = async (callback: () => Promise<void> | void) => {
 		loaderElement.classList.add('active');
 
-		setTimeout(() => {
-			callback();
+		try {
+			// Add small delay to ensure loader is visible
+			await new Promise(resolve => setTimeout(resolve, 100));
+			await callback();
+		} finally {
+			// Add small delay before removing loader
 			setTimeout(() => loaderElement.classList.remove('active'), 200);
-		}, 100);
+		}
 	};
 
 	// File input handler with loading indicator
@@ -77,9 +81,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		const img = new Image();
 		img.src = URL.createObjectURL(input.files[0]);
 		img.onload = () => {
-			withLoading(() => {
+			withLoading(async () => {
 				// Set source and apply all effects at once
-				px.setFromImgSource(img.src).applyEffects({
+				await px.setFromImgSource(img.src);
+				await px.applyEffects({
 					scale: Number(blocksize.value),
 					grayscale: greyscale.checked,
 					applyPalette: palette.checked,
@@ -156,12 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		const availablePalettes = px.getAvailablePalettes();
 
 		// Add options to select
-		availablePalettes.forEach((colors, index) => {
+		availablePalettes.forEach((colors: RGBColor[], index: number) => {
 			const option = document.createElement('option');
 			option.value = index.toString();
 
 			// Create color blocks for preview
-			colors.forEach((color) => {
+			colors.forEach((color: RGBColor) => {
 				const div = document.createElement('div');
 				div.className = 'colorblock';
 				div.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]},1)`;
@@ -179,10 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			onChange: (info: { value: string }) => {
 				const paletteIndex = Number(info.value);
 
-				withLoading(() => {
+				withLoading(async () => {
 					// Use the applyEffects method with the selected palette
 					palette.checked = true; // Force palette mode on
-					px.applyEffects({
+					await px.applyEffects({
 						paletteIndex,
 						scale: Number(blocksize.value),
 						grayscale: greyscale.checked,
@@ -200,8 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	blocksizeValue.innerText = blocksize.value;
 
 	// Run initial pixelation with default settings
-	withLoading(() => {
-		px.applyEffects({
+	withLoading(async () => {
+		await px.applyEffects({
 			scale: Number(blocksize.value),
 			paletteIndex: 0,
 			grayscale: greyscale.checked,
