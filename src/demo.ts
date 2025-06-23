@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		grayscale: greyscale.checked,
 		usePalette: palette.checked,
 		paletteIndex: 0,
-		isOpen: false,
+		isOpen: true, // Set to true to show palette options by default
 		maxWidth: maxwidth.value ? Number(maxwidth.value) : undefined,
 		maxHeight: maxheight.value ? Number(maxheight.value) : undefined,
 	});
