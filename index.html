@@ -84,6 +84,13 @@
             margin-bottom: 20px;
         }
 
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
         .pixel-preview {
             border: 3px dashed var(--light);
             border-radius: var(--border-radius);
@@ -91,16 +98,15 @@
             text-align: center;
             position: relative;
             background: #ffffff;
-            min-height: 400px; /* Increased minimum height for controls */
+            min-height: 70vh; /* Increased height to fill most of viewport */
             display: flex;
             align-items: center;
             justify-content: center;
-            padding-bottom: 70px; /* Make space for controls */
         }
 
         #pixelitcanvas {
             max-width: 100%;
-            max-height: 70vh; /* Limit height to 70% of viewport height */
+            max-height: 65vh; /* Limit height to 65% of viewport height */
             width: auto; /* Allow canvas to maintain aspect ratio */
             height: auto;
             display: block;
@@ -114,8 +120,11 @@
 
         .preview-actions {
             display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
+            gap: 10px;
+        }
+        
+        .custom-palette-container {
+            margin-top: 20px;
         }
 
         .controls {
@@ -395,11 +404,19 @@
     </header>
 
     <div class="container">
-        <!-- Main Preview Area - Now Full Width -->
+        <!-- Main Preview Area - Now Full Width and Height -->
         <div class="preview-container">
             <div class="card">
-                <div class="size-toggle">
-                    <button id="fullscreen-toggle" class="zoom-btn">Fullscreen</button>
+                <div class="preview-header">
+                    <h2>PixelArt Preview</h2>
+                    <div class="preview-actions">
+                        <div class="file-input-wrapper">
+                            <button class="btn">Choose Image</button>
+                            <input type="file" id="pixlInput" accept="image/*" />
+                        </div>
+                        <button id="downloadimage" class="btn btn-success">Download Image</button>
+                        <button id="fullscreen-toggle" class="btn btn-primary">Fullscreen</button>
+                    </div>
                 </div>
                 <div class="pixel-preview">
                     <img id="pixelitimg" src="assets/default-image.jpg" alt="Source Image" />
@@ -408,74 +425,28 @@
                         <div class="spinner"></div>
                     </div>
                 </div>
-
-                <div class="preview-actions">
-                    <div class="file-input-wrapper">
-                        <button class="btn">Choose Image</button>
-                        <input type="file" id="pixlInput" accept="image/*" />
-                    </div>
-                    <button id="downloadimage" class="btn btn-success">Download Image</button>
-                </div>
             </div>
         </div>
+        
+        <!-- Hidden controls for compatibility -->
+        <div style="display: none;">
+            <input type="range" id="blocksize" min="1" max="50" value="8" />
+            <span id="blockvalue">8</span>
+            <input type="checkbox" id="greyscale" />
+            <input type="checkbox" id="palette" checked />
+            <input type="checkbox" id="debug" />
+            <input type="number" id="maxwidth" placeholder="Auto" />
+            <input type="number" id="maxheight" placeholder="Auto" />
+            <select id="paletteselector"></select>
+            <div id="palettecolor"></div>
+            <input type="color" id="customcolor" value="#ff00ff" />
+            <div id="currentpallete"></div>
+        </div>
 
-        <!-- Controls in Two Columns Below -->
-        <div class="controls-container">
+        <!-- Custom palette creation -->
+        <div class="custom-palette-container">
             <div class="card">
-                <h2>Pixel Settings</h2>
-                
-                <div class="control-group">
-                    <label>Block Size: <span id="blockvalue">8</span></label>
-                    <input type="range" id="blocksize" min="1" max="50" value="8" />
-                    <p class="help-text">Controls the size of each pixel block.</p>
-                </div>
-                
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="greyscale" />
-                        Greyscale Effect
-                    </label>
-                    <p class="help-text">Convert image to black and white.</p>
-                </div>
-                
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="palette" checked />
-                        Apply Color Palette
-                    </label>
-                    <p class="help-text">Reduce colors to match the selected palette.</p>
-                </div>
-                
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="debug" />
-                        Debug Mode (Color Stats)
-                    </label>
-                    <p class="help-text">Enable color statistics (may slow down for large images).</p>
-                </div>
-                
-                <div class="control-group">
-                    <label>Max Width:</label>
-                    <input type="number" id="maxwidth" placeholder="Auto" />
-                    <p class="help-text">Maximum width in pixels (leave empty for original size).</p>
-                </div>
-                
-                <div class="control-group">
-                    <label>Max Height:</label>
-                    <input type="number" id="maxheight" placeholder="Auto" />
-                    <p class="help-text">Maximum height in pixels (leave empty for original size).</p>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2>Color Palettes</h2>
-                <div class="control-group">
-                    <label>Select Palette:</label>
-                    <select id="paletteselector"></select>
-                    <div id="palettecolor"></div>
-                </div>
-
-                <h3>Custom Palette</h3>
+                <h3>Create Custom Palette</h3>
                 <div class="control-group">
                     <div style="display: flex; align-items: center;">
                         <input type="color" id="customcolor" value="#ff00ff" />

@@ -237,8 +237,20 @@ document.addEventListener('DOMContentLoaded', () => {
 		usePalette: palette.checked,
 		paletteIndex: 0,
 		isOpen: false,
+		maxWidth: maxwidth.value ? Number(maxwidth.value) : undefined,
+		maxHeight: maxheight.value ? Number(maxheight.value) : undefined,
 	});
 
+	// Make sure the custom palette controls are properly set up
+	document
+		.querySelectorAll('#customcolor')
+		.forEach((elem) => {
+			(elem as HTMLInputElement).value = '#ff00ff';
+		});
+
+	// Expose BUILT_IN_PALETTES to window for palette name display
+	(window as any).BUILT_IN_PALETTES = BUILT_IN_PALETTES;
+	
 	// Run initial pixelation with default settings
 	withLoading(async () => {
 		await px.applyEffects({
