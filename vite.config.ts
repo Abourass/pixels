@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	root: '.',
-	base: './',
+	base: process.env.GITHUB_ACTIONS ? '/pixels/' : './',
 	server: {
 		port: 3000,
 		open: true,
