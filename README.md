@@ -17,7 +17,7 @@ A modern, high-performance TypeScript library for converting images into pixel a
 
 ## Demo
 
-Visit the [live demo](https://pixels-demo.example.com) to see PixelIt in action. The demo includes an interactive interface where you can:
+Visit the [live demo](https://abourass.github.io/pixels/) to see PixelIt in action. The demo includes an interactive interface where you can:
 - Upload your own images
 - Adjust pixelation scale in real-time
 - Switch between different color palettes
@@ -458,7 +458,7 @@ ISC License - see LICENSE file for details
 
 - [GitHub Repository](https://github.com/abourass/pixels)
 - [Report Issues](https://github.com/abourass/pixels/issues)
-- [Live Demo](https://pixels-demo.example.com)
+- [Live Demo](https://abourass.github.io/pixels/)
 
 ---
 
